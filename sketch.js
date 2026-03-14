@@ -25,6 +25,7 @@ function setup() {
 }
 
 function switchAnimal(name) {
+  const prev = currentAnimal
   currentAnimal = name
 
   // 按半径从大到小排序
@@ -45,8 +46,9 @@ function switchAnimal(name) {
   gridData = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
   startTime = millis()
 
-  // 切换动物时清除已放置椭圆和组件库
-  if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
+  // 切换动物时保存/恢复状态
+  if (typeof onAnimalSwitch !== 'undefined') onAnimalSwitch(prev, name)
+  else if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
   else if (typeof clearLibrary !== 'undefined') clearLibrary()
 
   document.querySelectorAll('button').forEach(b => {
@@ -94,6 +96,17 @@ function draw() {
     ellipse(snapHighlight.x, snapHighlight.y, snapHighlight.r * 2, snapHighlight.r * 2)
     strokeWeight(0.8)
   }
+
+  // 完成闪烁
+  if (typeof _flashEnd !== 'undefined' && millis() < _flashEnd) {
+    const t = (millis() % 500) / 500
+    const a = sin(t * PI) * 200
+    const nodes = (typeof allNodes !== 'undefined' && allNodes[currentAnimal]) || []
+    noFill(); strokeWeight(4)
+    stroke(255, 255, 255, a)
+    nodes.forEach(n => ellipse(n.x * CANVAS, n.y * CANVAS, n.r * CANVAS * 2, n.r * CANVAS * 2))
+    strokeWeight(0.8)
+  }
 }
 
 function drawGrid(elapsed) {
@@ -116,3 +129,6 @@ function drawGrid(elapsed) {
       rect(r.x * CANVAS, r.y * CANVAS, r.w * CANVAS, r.h * CANVAS)
   }
 }
+
+let _flashEnd = 0
+function triggerCompleteFlash() { _flashEnd = millis() + 600 }
