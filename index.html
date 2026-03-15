@@ -5,8 +5,9 @@
 <title>Animal Puzzle</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #001738; font-family: sans-serif; color: #eee; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body { background: #001738; font-family: sans-serif; color: #eee; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; }
+canvas { touch-action: none; }
 #controls { padding: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
 button { padding: 6px 14px; background: #0a2a5a; color: #eee; border: 1px solid #2a4a8a; border-radius: 4px; cursor: pointer; }
 button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
