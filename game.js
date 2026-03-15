@@ -361,11 +361,13 @@ function makePlacedDraggable(svg, piece) {
     rotTimer = setTimeout(() => {
       rotTimer = null
       if (piece.hardLocked) return
-      let elapsed = 0
+      let elapsed = 0, totalRot = 0
       rotInterval = setInterval(() => {
         elapsed += 16
         const t = Math.max(0, elapsed - 300) / 2000
         const speed = 0.05 + Math.min(t, 1) * 4.95
+        totalRot += speed
+        if (totalRot > 720) { stopRot(); return }
         piece.currentAngle = (piece.currentAngle + speed) % 360
         updateTransform(piece)
       }, 16)
