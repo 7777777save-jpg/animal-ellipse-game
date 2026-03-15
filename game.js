@@ -252,8 +252,10 @@ function buildLibrary(animal) {
     const fill = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
     // 长轴 = 圆直径（硬性约束）
     const realRx = n.r * CANVAS  // 长半轴 = 圆半径
-    // 短轴初始 = ellipse_data 中较小的半轴
-    const realRy = Math.min(ed.rx || n.r, ed.ry || n.r) * CANVAS
+    // 短轴初始 = ellipse_data 中较小的半轴（已归一化，乘CANVAS）
+    const edRx = (ed.rx || n.r) * CANVAS
+    const edRy = (ed.ry || n.r) * CANVAS
+    const realRy = Math.min(edRx, edRy)
     const initAngle = ed.angle || 0
     const order     = ed.order || 500
 
@@ -328,17 +330,16 @@ function startLibDrag(e, wrapper, data) {
 function hitTestPiece(piece, clientX, clientY) {
   const rect = piece.svg.getBoundingClientRect()
   const sz = piece.data.realRx * 2 + 40
-  // 椭圆中心在 svg 内的位置
-  const cx = rect.left + sz / 2
-  const cy = rect.top  + sz / 2
-  const dx = clientX - cx
-  const dy = clientY - cy
-  // 反向旋转鼠标坐标
+  const scale = rect.width / sz  // CSS zoom 缩放比
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top  + rect.height / 2
+  const dx = (clientX - cx) / scale
+  const dy = (clientY - cy) / scale
   const rad = -piece.currentAngle * Math.PI / 180
-  const rx2 = dx * Math.cos(rad) - dy * Math.sin(rad)
-  const ry2 = dx * Math.sin(rad) + dy * Math.cos(rad)
+  const lx = dx * Math.cos(rad) - dy * Math.sin(rad)
+  const ly = dx * Math.sin(rad) + dy * Math.cos(rad)
   const rx = piece.data.realRx, ry = piece.currentRy
-  return (rx2 * rx2) / (rx * rx) + (ry2 * ry2) / (ry * ry) <= 1
+  return (lx * lx) / (rx * rx) + (ly * ly) / (ry * ry) <= 1
 }
 
 // ── 已放置椭圆交互 ────────────────────────────────────────
@@ -357,6 +358,7 @@ function makePlacedDraggable(svg, piece) {
     startX = e.clientX; startY = e.clientY
     rotTimer = setTimeout(() => {
       rotTimer = null
+      pressStart = null  // 清除，避免 pointerup 误判为短按
       if (piece.hardLocked) return
       let elapsed = 0
       rotInterval = setInterval(() => {
@@ -387,10 +389,9 @@ function makePlacedDraggable(svg, piece) {
 
   svg.addEventListener('pointerup', () => {
     const wasRotating = rotInterval !== null
-    const pressDur = Date.now() - (pressStart || Date.now())
     stopRot(); pressStart = null
     if (isDragging) { isDragging = false; return }
-    if (wasRotating || pressDur > 400) return
+    if (wasRotating) return
     handleClick(piece)
   })
 
