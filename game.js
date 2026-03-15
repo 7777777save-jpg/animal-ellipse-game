@@ -29,10 +29,22 @@ function getSortedNodes(animal) {
   return nodes.slice().sort((a, b) => b.r - a.r)
 }
 
-// 获取椭圆数据（按 max(rx,ry) 降序，与 circle_nodes 对齐）
-function getSortedEllipses(animal) {
-  const eData = ellipseData[animal] || []
-  return eData.slice().sort((a, b) => Math.max(b.rx,b.ry) - Math.max(a.rx,a.ry))
+// 按坐标最近邻匹配：返回与 sortedNodes 等长的数组，每个元素是对应的 ellipse（无匹配则 null）
+function matchEllipsesToNodes(animal) {
+  const nodes = getSortedNodes(animal)
+  const eData = (ellipseData[animal] || []).slice()
+  const used  = new Set()
+  return nodes.map(n => {
+    let best = -1, bestD = Infinity
+    eData.forEach((e, i) => {
+      if (used.has(i)) return
+      const d = (e.cx - n.x) ** 2 + (e.cy - n.y) ** 2
+      if (d < bestD) { bestD = d; best = i }
+    })
+    if (best < 0) return null
+    used.add(best)
+    return eData[best]
+  })
 }
 
 // ── 开关游戏模式 ──────────────────────────────────────────
@@ -106,7 +118,7 @@ function initFeaturePieces(animal) {
       const S = CANVAS / 1000
       const circleCls = CIRCLE_CLS[animal]
       const sorted = getSortedNodes(animal)
-      const eList  = getSortedEllipses(animal)
+      const eList  = matchEllipsesToNodes(animal)
 
       // 解析 style 块，获取每个 class 的 fill（取第一个有 fill 的规则）
       const clsFill = {}
@@ -242,7 +254,7 @@ function buildLibrary(animal) {
   document.getElementById('complete-msg').style.display = 'none'
 
   const sorted  = getSortedNodes(animal)
-  const eList   = getSortedEllipses(animal)
+  const eList   = matchEllipsesToNodes(animal)
   const st      = currentState
 
   sorted.forEach((n, i) => {
@@ -718,7 +730,7 @@ function autoPlace() {
   if (!currentState) return
   const animal = currentAnimal
   const sorted = getSortedNodes(animal)
-  const eList  = getSortedEllipses(animal)
+  const eList  = matchEllipsesToNodes(animal)
 
   // 第一阶段：把库里剩余椭圆归位到圆心
   const pending = []
