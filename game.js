@@ -744,7 +744,8 @@ function autoPlace() {
         const nx = n.x * CANVAS, ny = n.y * CANVAS
         const data = { realRx, realRy, initAngle: angle, fill, targetIdx: i, order }
         currentState.usedIdx.add(i)
-        const piece = placePiece({ x: nx, y: ny }, data, realRy, angle)
+        // 第一阶段先以圆形放置（ry=rx），第二阶段再变形
+        const piece = placePiece({ x: nx, y: ny }, data, realRx, 0)
         doSnap(piece, { x: nx, y: ny, r: n.r * CANVAS, idx: i })
         const lib = document.getElementById('ellipse-library')
         lib.querySelectorAll('[data-idx]').forEach(w => {
