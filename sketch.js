@@ -73,7 +73,7 @@ function draw() {
   if (!(typeof gameMode !== 'undefined' && gameMode)) {
     const elapsed = (now - startTime) / 1000
     const dur = cycleDuration()
-    if (dur > 0 && elapsed >= dur + 0.5) {
+    if (dur > 0 && elapsed >= dur ) {
       // 进入暂停
       if (_pauseUntil === 0) _pauseUntil = now + 2000
       // 暂停结束 → 重建 circles（重新随机）并重置
