@@ -39,8 +39,9 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 #hint-btn { background:#1a3a6a; border-color:#a4e1ff; color:#a4e1ff; }
 #ref-panel { margin-top: 4px; }
 #ref-img { width:100%; height:140px; object-fit:contain; display:none; background:transparent; }
-#lock-btn, #back-btn { display:none; position:fixed; z-index:600; padding:4px 12px; font-size:12px; background:#1a3a6a; border:1px solid #a4e1ff; color:#a4e1ff; border-radius:4px; cursor:pointer; }
 #lock-btn.locked { background:#1a4a2a; border-color:#4aff8a; color:#4aff8a; }
+#piece-actions { display:none; flex-direction:column; gap:4px; margin:6px 0; }
+#piece-actions button { flex:1; padding:4px 8px; font-size:12px; background:#1a3a6a; border:1px solid #a4e1ff; color:#a4e1ff; border-radius:4px; cursor:pointer; }
 #complete-msg { position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); font-size:32px; color:#4aff8a; pointer-events:none; display:none; z-index:800; text-shadow:0 0 20px #4aff8a; }
 #complete-overlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:700; }
 #complete-overlay img { width:100%; height:100%; object-fit:contain; opacity:0; transition:opacity 0.6s; }
@@ -76,14 +77,22 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
           <button onclick="autoPlace()" style="background:#1a3a6a;border-color:#a4e1ff;color:#a4e1ff;">Auto</button>
           <button id="hint-btn" onclick="showHint()">Hint</button>
         </div>
+        <div id="piece-actions">
+          <div style="display:flex;gap:4px;">
+            <button id="lock-btn" onclick="toggleLockSelected()">Lock</button>
+            <button id="back-btn" onclick="backToLibrary()">Back</button>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button onclick="shiftLayer(1)">▲ 上移</button>
+            <button onclick="shiftLayer(-1)">▼ 下移</button>
+          </div>
+        </div>
         <div id="ref-panel"><img id="ref-img" src="" alt=""></div>
       </div>
     </div>
   </div>
 </div>
 <div id="complete-msg"></div>
-<button id="lock-btn" onclick="toggleLockSelected()">Lock</button>
-<button id="back-btn" onclick="backToLibrary()">Back</button>
 <script src="sketch.js"></script>
 <script src="game.js"></script>
 <script>

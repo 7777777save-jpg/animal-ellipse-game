@@ -648,26 +648,18 @@ function deselectPiece(piece) {
 }
 
 function updateLockBtn(piece) {
-  const btn  = document.getElementById('lock-btn')
-  const back = document.getElementById('back-btn')
-  if (!btn) return
-  if (!piece) {
-    btn.style.display = 'none'
-    if (back) back.style.display = 'none'
-    return
-  }
-  const container = document.getElementById('canvas-container')
-  const rect = container.getBoundingClientRect()
-  btn.style.display = 'block'
+  const btn     = document.getElementById('lock-btn')
+  const actions = document.getElementById('piece-actions')
+  if (!btn || !actions) return
+  actions.style.display = piece ? 'flex' : 'none'
+  if (!piece) return
   btn.textContent = piece.hardLocked ? 'Unlock' : 'Lock'
   btn.classList.toggle('locked', !!piece.hardLocked)
-  btn.style.left = (rect.right - 70) + 'px'
-  btn.style.top  = (rect.top + 8) + 'px'
-  if (back) {
-    back.style.display = 'block'
-    back.style.left = (rect.right - 130) + 'px'
-    back.style.top  = (rect.top + 8) + 'px'
-  }
+}
+
+function shiftLayer(dir) {
+  if (!selectedPiece) return
+  selectedPiece.svg.style.zIndex = (parseInt(selectedPiece.svg.style.zIndex) || 100) + dir
 }
 
 function toggleLockSelected() {
