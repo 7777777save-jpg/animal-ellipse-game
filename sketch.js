@@ -13,6 +13,8 @@ let circles  = []
 let gridData = {'1':[],'2':[],'3':[],'4':[]}
 let startTime = 0
 let _pauseUntil = 0
+const ANIMALS = ['lu','canglu','e','gezi','tuzi','he']
+let _idleCycle = 0
 
 function preload() {
   allNodes = loadJSON('circle_nodes.json')
@@ -47,6 +49,7 @@ function switchAnimal(name) {
   gridData  = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
   startTime = millis()
   _pauseUntil = 0
+  _idleCycle = 0
 
   if (typeof onAnimalSwitch !== 'undefined') onAnimalSwitch(prev, name)
   else if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
@@ -76,9 +79,18 @@ function draw() {
     if (dur > 0 && elapsed >= dur ) {
       // 进入暂停
       if (_pauseUntil === 0) _pauseUntil = now + 2000
-      // 暂停结束 → 重建 circles（重新随机）并重置
+      // 暂停结束 → 播2遍后切换动物
       if (now >= _pauseUntil) {
-        circles   = buildCircles(currentAnimal)
+        _idleCycle++
+        if (_idleCycle >= 2) {
+          _idleCycle = 0
+          const idx = (ANIMALS.indexOf(currentAnimal) + 1) % ANIMALS.length
+          currentAnimal = ANIMALS[idx]
+          circles  = buildCircles(currentAnimal)
+          gridData = allGrids[currentAnimal] || {'1':[],'2':[],'3':[],'4':[]}
+        } else {
+          circles = buildCircles(currentAnimal)
+        }
         startTime = now
         _pauseUntil = 0
       }
