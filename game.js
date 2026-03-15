@@ -146,7 +146,7 @@ function initFeaturePieces(animal) {
         piece.svg.style.top  = (ny - sz/2) + 'px'
         piece.nodeIdx = bestI; piece.snapped = true
         piece.svg.style.cursor = 'default'
-        piece.svg.style.zIndex = order
+        piece.svg.style.zIndex = 100 + order
         // 涟漪扩展动画
         piece.svg.style.transform = 'scale(0)'
         piece.svg.style.transformOrigin = '50% 50%'
@@ -474,8 +474,8 @@ function doSnap(piece, snap) {
   piece.svg.style.top  = (snap.y - sz / 2) + 'px'
   piece.nodeIdx = snap.idx; piece.snapped = true
   piece.svg.style.cursor = 'default'
-  // 吸附时按参考模板 order 设置层级（order 越小越在底层）
-  piece.svg.style.zIndex = piece.data.order
+  // order 作为 zIndex：order 越小越在底层，加 100 偏移避免与其他元素冲突
+  piece.svg.style.zIndex = 100 + piece.data.order
   snapHighlight = null
   flashStroke(piece, '#4aff8a', 'black')
   checkComplete()
@@ -707,6 +707,49 @@ document.addEventListener('keydown', e => {
     updateTransform(selectedPiece)
   }
 })
+
+function autoPlace() {
+  if (!currentState) return
+  const animal = currentAnimal
+  const sorted = getSortedNodes(animal)
+  const eList  = getSortedEllipses(animal)
+
+  // 收集库里还未使用的索引，按 order 从小到大放置
+  const pending = []
+  sorted.forEach((n, i) => {
+    if (currentState.usedIdx.has(i)) return
+    const ed = eList[i] || {}
+    pending.push({ i, n, ed })
+  })
+  // 按 order 排序（order 小的先放，在底层）
+  pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
+
+  let delay = 0
+  pending.forEach(({ i, n, ed }) => {
+    setTimeout(() => {
+      const fill    = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
+      const realRx  = n.r * CANVAS
+      const edRx    = (ed.rx || n.r) * CANVAS
+      const edRy    = (ed.ry || n.r) * CANVAS
+      const realRy  = Math.min(edRx, edRy)
+      const angle   = ed.angle || 0
+      const order   = ed.order || 500
+      const nx = n.x * CANVAS, ny = n.y * CANVAS
+
+      const data = { realRx, realRy, initAngle: angle, fill, targetIdx: i, order }
+      currentState.usedIdx.add(i)
+      const piece = placePiece({ x: nx, y: ny }, data, realRy, angle)
+      doSnap(piece, { x: nx, y: ny, r: n.r * CANVAS, idx: i })
+
+      // 移除库里对应的 wrapper
+      const lib = document.getElementById('ellipse-library')
+      lib.querySelectorAll('[data-idx]').forEach(w => {
+        if (parseInt(w.dataset.idx) === i) w.remove()
+      })
+    }, delay)
+    delay += 80
+  })
+}
 
 function checkComplete() {}
 
