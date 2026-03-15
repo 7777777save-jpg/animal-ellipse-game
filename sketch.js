@@ -4,7 +4,7 @@ const WHITE        = [255, 255, 255]
 const GRID_COLOR   = [164, 225, 255]
 const STEP_DELAY   = 0.06
 const RIPPLE_DUR   = 7.2
-const POINT_PHASE  = RIPPLE_DUR * 0.30  // 点只存在于前30%时间内
+const POINT_PHASE  = RIPPLE_DUR * 0.30
 
 let allNodes = {}
 let allGrids = {}
@@ -24,15 +24,10 @@ function setup() {
   switchAnimal(currentAnimal)
 }
 
-function switchAnimal(name) {
-  const prev = currentAnimal
-  currentAnimal = name
-
-  // 按半径从大到小排序
+function buildCircles(name) {
   const nodes = (allNodes[name] || []).slice().sort((a, b) => b.r - a.r)
   const maxR  = nodes.length ? nodes[0].r : 1
-
-  circles = nodes.map((n, i) => {
+  return nodes.map((n, i) => {
     const appear    = i * STEP_DELAY
     const rippleEnd = appear + RIPPLE_DUR + (Math.random() * 0.3 - 0.15)
     const sizeRatio = n.r / maxR
@@ -42,11 +37,15 @@ function switchAnimal(name) {
     return { x: n.x * CANVAS, y: n.y * CANVAS, target: n.r * CANVAS,
              appear, rippleEnd, fadeStart, fadeEnd }
   })
+}
 
-  gridData = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
+function switchAnimal(name) {
+  const prev = currentAnimal
+  currentAnimal = name
+  circles   = buildCircles(name)
+  gridData  = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
   startTime = millis()
 
-  // 切换动物时保存/恢复状态
   if (typeof onAnimalSwitch !== 'undefined') onAnimalSwitch(prev, name)
   else if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
   else if (typeof clearLibrary !== 'undefined') clearLibrary()
@@ -58,23 +57,48 @@ function switchAnimal(name) {
   })
 }
 
+// 动画总时长：最后一个圆扩散完毕
+function cycleDuration() {
+  if (!circles.length) return 0
+  return circles[circles.length - 1].rippleEnd
+}
+
+let _pauseUntil = 0  // 暂停结束的 millis() 时间点
+
 function draw() {
   background(...BG)
-  const elapsed = (millis() - startTime) / 1000
+
+  const now = millis()
+
+  // 循环控制（idle 状态）
+  if (!(typeof gameMode !== 'undefined' && gameMode)) {
+    const elapsed = (now - startTime) / 1000
+    const dur = cycleDuration()
+    if (dur > 0 && elapsed >= dur + 0.5) {
+      // 进入暂停
+      if (_pauseUntil === 0) _pauseUntil = now + 2000
+      // 暂停结束 → 重建 circles（重新随机）并重置
+      if (now >= _pauseUntil) {
+        circles   = buildCircles(currentAnimal)
+        startTime = now
+        _pauseUntil = 0
+      }
+    }
+  }
+
+  const elapsed = (now - startTime) / 1000
 
   drawGrid(elapsed)
-
   strokeWeight(0.8)
 
   for (let c of circles) {
     if (elapsed < c.appear) continue
 
     const rippleT  = min((elapsed - c.appear) / (c.rippleEnd - c.appear), 1)
-    const rippleTe = 1 - pow(1 - rippleT, 2)  // easeOut
+    const rippleTe = 1 - pow(1 - rippleT, 2)
     const r        = c.target * rippleTe
 
-    // 点：出现后显示，按 sizeRatio 决定淡出时机
-    if (elapsed >= c.appear && elapsed < c.fadeEnd) {
+    if (elapsed < c.fadeEnd) {
       const ptAlpha = elapsed < c.fadeStart ? 220
                     : map(elapsed, c.fadeStart, c.fadeEnd, 220, 0)
       noStroke()
@@ -82,13 +106,11 @@ function draw() {
       ellipse(c.x, c.y, 5, 5)
     }
 
-    // 涟漪圆
     noFill()
     stroke(WHITE[0], WHITE[1], WHITE[2], map(rippleTe, 0, 1, 40, 220))
     ellipse(c.x, c.y, r * 2, r * 2)
   }
 
-  // 目标圆高亮（拖拽接近时）— snapHighlight 已是像素坐标
   if (typeof snapHighlight !== 'undefined' && snapHighlight) {
     noFill()
     stroke(164, 225, 255, 200)
@@ -97,7 +119,6 @@ function draw() {
     strokeWeight(0.8)
   }
 
-  // 完成闪烁
   if (typeof _flashEnd !== 'undefined' && millis() < _flashEnd) {
     const t = (millis() % 500) / 500
     const a = sin(t * PI) * 200
