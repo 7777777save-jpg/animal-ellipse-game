@@ -503,18 +503,19 @@ function moveFloat(mx, my) {
   floatSvg.style.left = (mx - sz/2) + 'px'
   floatSvg.style.top  = (my - sz/2) + 'px'
 
-  // 只检测目标圆，椭圆边界接触圆环时立即吸附
+  // 将屏幕坐标转换为画布原始坐标（除以 zoomLevel）
   const rect = canvasEl.getBoundingClientRect()
-  const cx = mx - rect.left, cy = my - rect.top
+  const zoom = typeof zoomLevel !== 'undefined' ? zoomLevel : 1
+  const cx = (mx - rect.left) / zoom
+  const cy = (my - rect.top)  / zoom
   const sorted = getSortedNodes(currentAnimal)
   const nd = sorted[data.targetIdx]
   if (nd) {
     const nx = nd.x * CANVAS, ny = nd.y * CANVAS, nr = nd.r * CANVAS
     const dist = Math.hypot(cx - nx, cy - ny)
     if (dist < nr + data.realRx) {
-      // 接触即吸附：直接触发放置并锁定
       dragging.snapTarget = { x: nx, y: ny, r: nr, idx: data.targetIdx }
-      snapHighlight = { x: nx, y: ny, r: nr }  // 蓝色提示
+      snapHighlight = { x: nx, y: ny, r: nr }
     } else {
       dragging.snapTarget = null
       snapHighlight = null
@@ -532,8 +533,9 @@ const onUp = e => {
   const { floatSvg, data, libWrapper, piece, canvasEl, snapTarget } = dragging
   floatSvg.remove(); snapHighlight = null
   const rect = canvasEl.getBoundingClientRect()
-  const mx = (e.clientX ?? e.changedTouches?.[0]?.clientX) - rect.left
-  const my = (e.clientY ?? e.changedTouches?.[0]?.clientY) - rect.top
+  const zoom = typeof zoomLevel !== 'undefined' ? zoomLevel : 1
+  const mx = ((e.clientX ?? e.changedTouches?.[0]?.clientX) - rect.left) / zoom
+  const my = ((e.clientY ?? e.changedTouches?.[0]?.clientY) - rect.top)  / zoom
 
   if (mx >= 0 && my >= 0 && mx <= CANVAS && my <= CANVAS) {
     const ry  = dragging.prevRy    ?? data.realRy
