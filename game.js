@@ -768,7 +768,7 @@ function autoPlace() {
       delay += 80
     })
     currentState._autoStage = 1
-  } else if (currentState._autoStage === 1) {
+  } else {
     // 第二阶段：动画旋转+拉伸到参考角度和 ry
     currentState._autoStage = 2
     const pieces = currentState.placedPieces
