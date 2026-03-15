@@ -138,7 +138,6 @@ function initFeaturePieces(animal) {
         let bestI = 0, bestD = Infinity
         const majorR = Math.max(rx, ry)
         sorted.forEach((n, i) => {
-          if (currentState.usedIdx.has(i)) return
           const distScore = Math.hypot(cx - n.x*CANVAS, cy - n.y*CANVAS)
           const sizeScore = Math.abs(n.r*CANVAS - majorR) * 2
           const d = distScore + sizeScore
