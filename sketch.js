@@ -2,8 +2,8 @@ const CANVAS       = 900
 const BG           = [0, 23, 56]
 const WHITE        = [255, 255, 255]
 const GRID_COLOR   = [164, 225, 255]
-const STEP_DELAY   = 0.05
-const RIPPLE_DUR   = 6.0
+const STEP_DELAY   = 0.06
+const RIPPLE_DUR   = 7.2
 const POINT_PHASE  = RIPPLE_DUR * 0.30  // 点只存在于前30%时间内
 
 let allNodes = {}
