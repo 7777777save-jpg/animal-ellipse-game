@@ -3,7 +3,7 @@ const BG           = [0, 23, 56]
 const WHITE        = [255, 255, 255]
 const GRID_COLOR   = [164, 225, 255]
 const STEP_DELAY   = 0.06
-const RIPPLE_DUR   = 7.2
+const RIPPLE_DUR   = 5.76
 const POINT_PHASE  = RIPPLE_DUR * 0.30
 
 let allNodes = {}
@@ -79,18 +79,12 @@ function draw() {
     if (dur > 0 && elapsed >= dur ) {
       // 进入暂停
       if (_pauseUntil === 0) _pauseUntil = now + 2000
-      // 暂停结束 → 播2遍后切换动物
+      // 暂停结束 → 切换到下一个动物
       if (now >= _pauseUntil) {
-        _idleCycle++
-        if (_idleCycle >= 2) {
-          _idleCycle = 0
-          const idx = (ANIMALS.indexOf(currentAnimal) + 1) % ANIMALS.length
-          currentAnimal = ANIMALS[idx]
-          circles  = buildCircles(currentAnimal)
-          gridData = allGrids[currentAnimal] || {'1':[],'2':[],'3':[],'4':[]}
-        } else {
-          circles = buildCircles(currentAnimal)
-        }
+        const idx = (ANIMALS.indexOf(currentAnimal) + 1) % ANIMALS.length
+        currentAnimal = ANIMALS[idx]
+        circles  = buildCircles(currentAnimal)
+        gridData = allGrids[currentAnimal] || {'1':[],'2':[],'3':[],'4':[]}
         startTime = now
         _pauseUntil = 0
       }
