@@ -2,19 +2,22 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Animal Puzzle</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-body { background: #001738; font-family: sans-serif; color: #eee; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; }
+body { background: #001738; font-family: sans-serif; color: #eee; min-height: 100vh; }
 canvas { touch-action: none; }
-#controls { padding: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
-button { padding: 6px 14px; background: #0a2a5a; color: #eee; border: 1px solid #2a4a8a; border-radius: 4px; cursor: pointer; }
+button { padding: 6px 14px; background: #0a2a5a; color: #eee; border: 1px solid #2a4a8a; border-radius: 4px; cursor: pointer; touch-action: manipulation; }
 button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 #play-btn { background: #1a4a2a; border-color: #4aff8a; color: #4aff8a; font-weight: bold; }
 #play-btn:hover { background: #2a6a3a; }
 #mute-btn { min-width: 36px; }
+#zoom-out, #zoom-reset, #zoom-in { padding: 4px 10px; font-size: 13px; }
 #tips { font-size: 11px; color: #6a9abf; padding: 4px 8px; opacity: 0.8; }
+#gameContainer { transform-origin: top left; display: flex; flex-direction: column; align-items: center; }
+#controls { padding: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
 #game-area { display: flex; gap: 0; }
 #canvas-container { position: relative; }
 #panel { display: none; width: 0; background: #000d24; border-left: 1px solid #1a3a6a; overflow-y: auto; padding: 10px; transition: width 0.3s; }
@@ -34,33 +37,38 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 </style>
 </head>
 <body>
-<div id="controls">
-  <button onclick="switchAnimal('lu')" class="active">鹿</button>
-  <button onclick="switchAnimal('gezi')">鸽子</button>
-  <button onclick="switchAnimal('tuzi')">兔子</button>
-  <button onclick="switchAnimal('he')">鹤</button>
-  <button onclick="switchAnimal('e')">鹅</button>
-  <button onclick="switchAnimal('canglu')">苍鹭</button>
-  <button id="play-btn" onclick="togglePlay()">▶ PLAY</button>
-  <button id="mute-btn" onclick="toggleMute()" title="静音/开启音乐">🔊</button>
-  <span id="tips">长按旋转 · 双击变宽 · 三击变窄 · 选中可 Lock</span>
-</div>
-<audio id="bgm" src="water dreams.m4a" loop preload="auto" autoplay></audio>
-<div id="game-area">
-  <div id="canvas-container">
-    <div id="complete-overlay"><img id="complete-img" src="" alt=""></div>
+<div id="gameContainer">
+  <div id="controls">
+    <button onclick="switchAnimal('lu')" class="active">鹿</button>
+    <button onclick="switchAnimal('gezi')">鸽子</button>
+    <button onclick="switchAnimal('tuzi')">兔子</button>
+    <button onclick="switchAnimal('he')">鹤</button>
+    <button onclick="switchAnimal('e')">鹅</button>
+    <button onclick="switchAnimal('canglu')">苍鹭</button>
+    <button id="play-btn" onclick="togglePlay()">▶ PLAY</button>
+    <button id="mute-btn" onclick="toggleMute()" title="静音/开启音乐">🔊</button>
+    <button id="zoom-out" onclick="zoomOut()">−</button>
+    <button id="zoom-reset" onclick="zoomReset()">100%</button>
+    <button id="zoom-in" onclick="zoomIn()">+</button>
+    <span id="tips">长按旋转 · 双击变宽 · 三击变窄 · 选中可 Lock</span>
   </div>
-  <div id="panel">
-    <div id="panel-title">椭圆组件库</div>
-    <div id="ellipse-library"></div>
-    <div id="panel-actions">
-      <button onclick="resetAnimal()">Reset</button>
-      <button id="hint-btn" onclick="showHint()">Hint</button>
+  <audio id="bgm" src="water dreams.m4a" loop preload="auto" autoplay></audio>
+  <div id="game-area">
+    <div id="canvas-container">
+      <div id="complete-overlay"><img id="complete-img" src="" alt=""></div>
     </div>
-    <div id="ref-panel"><img id="ref-img" src="" alt=""></div>
+    <div id="panel">
+      <div id="panel-title">椭圆组件库</div>
+      <div id="ellipse-library"></div>
+      <div id="panel-actions">
+        <button onclick="resetAnimal()">Reset</button>
+        <button id="hint-btn" onclick="showHint()">Hint</button>
+      </div>
+      <div id="ref-panel"><img id="ref-img" src="" alt=""></div>
+    </div>
   </div>
+  <div id="complete-msg"></div>
 </div>
-<div id="complete-msg"></div>
 <button id="lock-btn" onclick="toggleLockSelected()">Lock</button>
 <button id="back-btn" onclick="backToLibrary()">Back</button>
 <script src="sketch.js"></script>
@@ -68,10 +76,8 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 <script>
 const bgm = document.getElementById('bgm')
 bgm.volume = 0.5
-// 页面加载完成后自动播放
 window.addEventListener('load', () => {
   bgm.play().catch(() => {
-    // 浏览器阻止自动播放时，等用户首次交互后播放
     document.addEventListener('click', () => bgm.play(), { once: true })
   })
 })
@@ -80,6 +86,38 @@ function toggleMute() {
   document.getElementById('mute-btn').textContent = bgm.muted ? '🔇' : '🔊'
   if (!bgm.muted && bgm.paused) bgm.play()
 }
+
+// ── 缩放 ──
+let zoomLevel = 1
+const gameContainer = document.getElementById('gameContainer')
+function applyZoom() {
+  gameContainer.style.transform = `scale(${zoomLevel})`
+  document.getElementById('zoom-reset').textContent = Math.round(zoomLevel * 100) + '%'
+}
+function zoomIn()    { zoomLevel = Math.min(2,   +(zoomLevel + 0.1).toFixed(1)); applyZoom() }
+function zoomOut()   { zoomLevel = Math.max(0.5, +(zoomLevel - 0.1).toFixed(1)); applyZoom() }
+function zoomReset() { zoomLevel = 1; applyZoom() }
+
+// ── 双指 Pinch Zoom ──
+let pinchDist0 = null, pinchZoom0 = 1
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    pinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+    pinchZoom0 = zoomLevel
+  }
+}, { passive: true })
+document.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && pinchDist0) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+    zoomLevel = Math.min(2, Math.max(0.5, +(pinchZoom0 * d / pinchDist0).toFixed(2)))
+    applyZoom()
+  }
+}, { passive: true })
+document.addEventListener('touchend', () => { pinchDist0 = null })
+
+// ── 禁止长按菜单 / 双击缩放 ──
+document.addEventListener('contextmenu', e => e.preventDefault())
+document.addEventListener('dblclick',    e => e.preventDefault())
 </script>
 </body>
 </html>
