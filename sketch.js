@@ -78,7 +78,7 @@ function draw() {
     const dur = cycleDuration()
     if (dur > 0 && elapsed >= dur ) {
       // 进入暂停
-      if (_pauseUntil === 0) _pauseUntil = now + 1200
+      if (_pauseUntil === 0) _pauseUntil = now + 720
       // 暂停结束 → 切换到下一个动物
       if (now >= _pauseUntil) {
         const idx = (ANIMALS.indexOf(currentAnimal) + 1) % ANIMALS.length
