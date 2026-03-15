@@ -344,7 +344,7 @@ function hitTestPiece(piece, clientX, clientY) {
 
 // ── 已放置椭圆交互 ────────────────────────────────────────
 function makePlacedDraggable(svg, piece) {
-  let pressStart = null, rotTimer = null, rotInterval = null
+  let rotTimer = null, rotInterval = null
   let isDragging = false, startX, startY
 
   const stopRot = () => {
@@ -354,11 +354,12 @@ function makePlacedDraggable(svg, piece) {
 
   // pointerdown 由 container 统一分发（见下方 initPieceHitDispatch）
   piece._startPress = (e) => {
-    pressStart = Date.now(); isDragging = false
+    isDragging = false
     startX = e.clientX; startY = e.clientY
+    const pid = e.pointerId
+
     rotTimer = setTimeout(() => {
       rotTimer = null
-      pressStart = null  // 清除，避免 pointerup 误判为短按
       if (piece.hardLocked) return
       let elapsed = 0
       rotInterval = setInterval(() => {
@@ -369,33 +370,38 @@ function makePlacedDraggable(svg, piece) {
         updateTransform(piece)
       }, 16)
     }, 400)
-  }
 
-  svg.addEventListener('pointermove', e => {
-    if (!pressStart && !rotInterval) return
-    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5 && !isDragging) {
-      if (piece.snapped) { stopRot(); pressStart = null; return }
-      isDragging = true; stopRot(); pressStart = null
-      e.preventDefault(); e.stopPropagation()
-      const canvasEl = document.querySelector('#canvas-container canvas')
-      if (!canvasEl) return
-      const float = createFloat(piece.data.realRx, piece.currentRy, piece.currentAngle, piece.data.fill)
-      svg.style.display = 'none'
-      if (selectedPiece === piece) selectedPiece = null
-      dragging = { ...float, data: piece.data, piece, canvasEl, prevRy: piece.currentRy, prevAngle: piece.currentAngle }
-      moveFloat(e.clientX, e.clientY)
+    const onMove = (ev) => {
+      if (ev.pointerId !== pid) return
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5 && !isDragging) {
+        if (piece.snapped) { stopRot(); return }
+        isDragging = true; stopRot()
+        ev.preventDefault(); ev.stopPropagation()
+        const canvasEl = document.querySelector('#canvas-container canvas')
+        if (!canvasEl) return
+        const float = createFloat(piece.data.realRx, piece.currentRy, piece.currentAngle, piece.data.fill)
+        svg.style.display = 'none'
+        if (selectedPiece === piece) selectedPiece = null
+        dragging = { ...float, data: piece.data, piece, canvasEl, prevRy: piece.currentRy, prevAngle: piece.currentAngle }
+        moveFloat(ev.clientX, ev.clientY)
+      }
     }
-  })
 
-  svg.addEventListener('pointerup', () => {
-    const wasRotating = rotInterval !== null
-    stopRot(); pressStart = null
-    if (isDragging) { isDragging = false; return }
-    if (wasRotating) return
-    handleClick(piece)
-  })
-
-  svg.addEventListener('pointercancel', () => { stopRot(); pressStart = null; isDragging = false })
+    const onUp = (ev) => {
+      if (ev.pointerId !== pid) return
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('pointercancel', onUp)
+      const wasRotating = rotInterval !== null
+      stopRot()
+      if (isDragging) { isDragging = false; return }
+      if (wasRotating) return
+      handleClick(piece)
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+    document.addEventListener('pointercancel', onUp)
+  }
 }
 
 // container 统一 pointerdown 分发：倒序检测，找最上层命中的椭圆
