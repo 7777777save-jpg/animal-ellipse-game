@@ -727,6 +727,9 @@ document.addEventListener('keydown', e => {
 
 function autoPlace() {
   if (!currentState) return
+  
+  if (currentState._autoStage === undefined) currentState._autoStage = 0
+  
   const animal = currentAnimal
   const sorted = getSortedNodes(animal)
   const eList  = matchEllipsesToNodes(animal)
@@ -740,7 +743,7 @@ function autoPlace() {
   })
   pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
 
-  if (pending.length > 0) {
+  if (currentState._autoStage === 0) {
     // 第一阶段：归位
     let delay = 0
     pending.forEach(({ i, n, ed }) => {
