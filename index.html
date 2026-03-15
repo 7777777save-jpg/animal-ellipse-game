@@ -7,16 +7,26 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-body { background: #001738; font-family: sans-serif; color: #eee; min-height: 100vh; }
+html, body { width: 100%; height: 100%; background: #001738; font-family: sans-serif; color: #eee; overflow: hidden; }
 canvas { touch-action: none; }
 button { padding: 6px 14px; background: #0a2a5a; color: #eee; border: 1px solid #2a4a8a; border-radius: 4px; cursor: pointer; touch-action: manipulation; }
 button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 #play-btn { background: #1a4a2a; border-color: #4aff8a; color: #4aff8a; font-weight: bold; }
-#play-btn:hover { background: #2a6a3a; }
 #mute-btn { min-width: 36px; }
 #zoom-out, #zoom-reset, #zoom-in { padding: 4px 10px; font-size: 13px; }
 #tips { font-size: 11px; color: #6a9abf; padding: 4px 8px; opacity: 0.8; }
-#gameContainer { transform-origin: top left; display: flex; flex-direction: column; align-items: center; }
+
+/* 全屏视口，负责拖动 */
+#viewport { position: fixed; inset: 0; overflow: hidden; cursor: grab; }
+#viewport.dragging { cursor: grabbing; }
+
+/* 游戏容器，负责缩放 */
+#gameContainer {
+  position: absolute;
+  transform-origin: center center;
+  display: flex; flex-direction: column; align-items: center;
+}
+
 #controls { padding: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
 #game-area { display: flex; gap: 0; }
 #canvas-container { position: relative; }
@@ -37,38 +47,40 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 </style>
 </head>
 <body>
-<div id="gameContainer">
-  <div id="controls">
-    <button onclick="switchAnimal('lu')" class="active">鹿</button>
-    <button onclick="switchAnimal('gezi')">鸽子</button>
-    <button onclick="switchAnimal('tuzi')">兔子</button>
-    <button onclick="switchAnimal('he')">鹤</button>
-    <button onclick="switchAnimal('e')">鹅</button>
-    <button onclick="switchAnimal('canglu')">苍鹭</button>
-    <button id="play-btn" onclick="togglePlay()">▶ PLAY</button>
-    <button id="mute-btn" onclick="toggleMute()" title="静音/开启音乐">🔊</button>
-    <button id="zoom-out" onclick="zoomOut()">−</button>
-    <button id="zoom-reset" onclick="zoomReset()">100%</button>
-    <button id="zoom-in" onclick="zoomIn()">+</button>
-    <span id="tips">长按旋转 · 双击变宽 · 三击变窄 · 选中可 Lock</span>
-  </div>
-  <audio id="bgm" src="water dreams.m4a" loop preload="auto" autoplay></audio>
-  <div id="game-area">
-    <div id="canvas-container">
-      <div id="complete-overlay"><img id="complete-img" src="" alt=""></div>
+<div id="viewport">
+  <div id="gameContainer">
+    <div id="controls">
+      <button onclick="switchAnimal('lu')" class="active">鹿</button>
+      <button onclick="switchAnimal('gezi')">鸽子</button>
+      <button onclick="switchAnimal('tuzi')">兔子</button>
+      <button onclick="switchAnimal('he')">鹤</button>
+      <button onclick="switchAnimal('e')">鹅</button>
+      <button onclick="switchAnimal('canglu')">苍鹭</button>
+      <button id="play-btn" onclick="togglePlay()">▶ PLAY</button>
+      <button id="mute-btn" onclick="toggleMute()" title="静音/开启音乐">🔊</button>
+      <button id="zoom-out" onclick="zoomOut()">−</button>
+      <button id="zoom-reset" onclick="zoomReset()">fit</button>
+      <button id="zoom-in" onclick="zoomIn()">+</button>
+      <span id="tips">长按旋转 · 双击变宽 · 三击变窄 · 选中可 Lock</span>
     </div>
-    <div id="panel">
-      <div id="panel-title">椭圆组件库</div>
-      <div id="ellipse-library"></div>
-      <div id="panel-actions">
-        <button onclick="resetAnimal()">Reset</button>
-        <button id="hint-btn" onclick="showHint()">Hint</button>
+    <audio id="bgm" src="water dreams.m4a" loop preload="auto" autoplay></audio>
+    <div id="game-area">
+      <div id="canvas-container">
+        <div id="complete-overlay"><img id="complete-img" src="" alt=""></div>
       </div>
-      <div id="ref-panel"><img id="ref-img" src="" alt=""></div>
+      <div id="panel">
+        <div id="panel-title">椭圆组件库</div>
+        <div id="ellipse-library"></div>
+        <div id="panel-actions">
+          <button onclick="resetAnimal()">Reset</button>
+          <button id="hint-btn" onclick="showHint()">Hint</button>
+        </div>
+        <div id="ref-panel"><img id="ref-img" src="" alt=""></div>
+      </div>
     </div>
   </div>
-  <div id="complete-msg"></div>
 </div>
+<div id="complete-msg"></div>
 <button id="lock-btn" onclick="toggleLockSelected()">Lock</button>
 <button id="back-btn" onclick="backToLibrary()">Back</button>
 <script src="sketch.js"></script>
@@ -87,35 +99,94 @@ function toggleMute() {
   if (!bgm.muted && bgm.paused) bgm.play()
 }
 
-// ── 缩放 ──
-let zoomLevel = 1
+// ── 缩放 + 平移 ──
+const viewport     = document.getElementById('viewport')
 const gameContainer = document.getElementById('gameContainer')
-function applyZoom() {
-  gameContainer.style.transform = `scale(${zoomLevel})`
+let zoomLevel = 1, tx = 0, ty = 0
+
+function applyTransform() {
+  gameContainer.style.transform = `translate(${tx}px,${ty}px) scale(${zoomLevel})`
   document.getElementById('zoom-reset').textContent = Math.round(zoomLevel * 100) + '%'
 }
-function zoomIn()    { zoomLevel = Math.min(2,   +(zoomLevel + 0.1).toFixed(1)); applyZoom() }
-function zoomOut()   { zoomLevel = Math.max(0.5, +(zoomLevel - 0.1).toFixed(1)); applyZoom() }
-function zoomReset() { zoomLevel = 1; applyZoom() }
+
+function fitToScreen() {
+  // 等 gameContainer 渲染完再计算
+  requestAnimationFrame(() => {
+    const vw = window.innerWidth, vh = window.innerHeight
+    const cw = gameContainer.offsetWidth, ch = gameContainer.offsetHeight
+    zoomLevel = Math.min(vw / cw, vh / ch, 1)  // 最大不超过100%
+    // 居中
+    tx = (vw - cw * zoomLevel) / 2
+    ty = (vh - ch * zoomLevel) / 2
+    applyTransform()
+  })
+}
+
+function zoomAt(delta, cx, cy) {
+  const prev = zoomLevel
+  zoomLevel = Math.min(2, Math.max(0.2, +(zoomLevel + delta).toFixed(2)))
+  // 以屏幕点(cx,cy)为中心缩放
+  tx = cx - (cx - tx) * (zoomLevel / prev)
+  ty = cy - (cy - ty) * (zoomLevel / prev)
+  applyTransform()
+}
+
+function zoomIn()    { zoomAt(+0.1, window.innerWidth/2, window.innerHeight/2) }
+function zoomOut()   { zoomAt(-0.1, window.innerWidth/2, window.innerHeight/2) }
+function zoomReset() { fitToScreen() }
+
+window.addEventListener('load', () => setTimeout(fitToScreen, 100))
+window.addEventListener('resize', fitToScreen)
+
+// ── 拖动平移（单指/鼠标，排除 canvas 和 panel 内的操作）──
+let panStart = null
+viewport.addEventListener('pointerdown', e => {
+  // 只响应 viewport 背景或 gameContainer 直接子元素（controls 区域）
+  if (e.target.closest('#canvas-container') || e.target.closest('#panel')) return
+  if (e.target.closest('button')) return
+  panStart = { x: e.clientX - tx, y: e.clientY - ty, id: e.pointerId }
+  viewport.setPointerCapture(e.pointerId)
+  viewport.classList.add('dragging')
+})
+viewport.addEventListener('pointermove', e => {
+  if (!panStart || e.pointerId !== panStart.id) return
+  tx = e.clientX - panStart.x
+  ty = e.clientY - panStart.y
+  applyTransform()
+})
+viewport.addEventListener('pointerup',     () => { panStart = null; viewport.classList.remove('dragging') })
+viewport.addEventListener('pointercancel', () => { panStart = null; viewport.classList.remove('dragging') })
 
 // ── 双指 Pinch Zoom ──
-let pinchDist0 = null, pinchZoom0 = 1
+let pinchDist0 = null, pinchZoom0 = 1, pinchMid0 = null
 document.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
-    pinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+    const t0 = e.touches[0], t1 = e.touches[1]
+    pinchDist0 = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY)
     pinchZoom0 = zoomLevel
+    pinchMid0  = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 }
   }
 }, { passive: true })
 document.addEventListener('touchmove', e => {
   if (e.touches.length === 2 && pinchDist0) {
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
-    zoomLevel = Math.min(2, Math.max(0.5, +(pinchZoom0 * d / pinchDist0).toFixed(2)))
-    applyZoom()
+    const t0 = e.touches[0], t1 = e.touches[1]
+    const d   = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY)
+    const mid = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 }
+    const prev = zoomLevel
+    zoomLevel = Math.min(2, Math.max(0.2, pinchZoom0 * d / pinchDist0))
+    tx = mid.x - (pinchMid0.x - tx) * (zoomLevel / prev)
+    ty = mid.y - (pinchMid0.y - ty) * (zoomLevel / prev)
+    applyTransform()
   }
 }, { passive: true })
-document.addEventListener('touchend', () => { pinchDist0 = null })
+document.addEventListener('touchend', e => { if (e.touches.length < 2) pinchDist0 = null })
 
-// ── 禁止长按菜单 / 双击缩放 ──
+// ── 鼠标滚轮缩放 ──
+viewport.addEventListener('wheel', e => {
+  e.preventDefault()
+  zoomAt(e.deltaY < 0 ? 0.1 : -0.1, e.clientX, e.clientY)
+}, { passive: false })
+
 document.addEventListener('contextmenu', e => e.preventDefault())
 document.addEventListener('dblclick',    e => e.preventDefault())
 </script>
