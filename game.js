@@ -418,7 +418,12 @@ function initPieceHitDispatch() {
       if (p.svg.style.display === 'none') continue
       if (hitTestPiece(p, e.clientX, e.clientY)) {
         e.preventDefault(); e.stopPropagation()
-        if (p.hardLocked) { handleClick(p); return }  // 锁定状态只允许点击选中/解锁
+      if (p.hardLocked) {
+        // 锁定状态：直接 toggle 选中，不走 clickCount 计时器
+        if (selectedPiece && selectedPiece !== p) deselectPiece(selectedPiece)
+        selectedPiece === p ? deselectPiece(p) : selectPiece(p)
+        return
+      }
         p.svg.setPointerCapture?.(e.pointerId)
         p._startPress(e)
         return
