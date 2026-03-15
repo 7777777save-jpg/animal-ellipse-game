@@ -357,6 +357,7 @@ function makePlacedDraggable(svg, piece) {
     startX = e.clientX; startY = e.clientY
     rotTimer = setTimeout(() => {
       rotTimer = null
+      if (piece.hardLocked) return
       let elapsed = 0
       rotInterval = setInterval(() => {
         elapsed += 16
@@ -437,11 +438,9 @@ function handleClick(piece) {
         selectedPiece === piece ? deselectPiece(piece) : selectPiece(piece)
       }
     } else if (n === 2) {
-      piece.currentRy = clampRy(piece.currentRy + RY_STEP, piece.data.realRx)
-      updateTransform(piece)
+      if (!piece.hardLocked) { piece.currentRy = clampRy(piece.currentRy + RY_STEP, piece.data.realRx); updateTransform(piece) }
     } else {
-      piece.currentRy = clampRy(piece.currentRy - RY_STEP, piece.data.realRx)
-      updateTransform(piece)
+      if (!piece.hardLocked) { piece.currentRy = clampRy(piece.currentRy - RY_STEP, piece.data.realRx); updateTransform(piece) }
     }
   }, 280)
 }
