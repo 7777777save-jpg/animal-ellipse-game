@@ -324,6 +324,23 @@ function startLibDrag(e, wrapper, data) {
   moveFloat(e.clientX, e.clientY)
 }
 
+// ── 椭圆几何命中检测（考虑旋转）────────────────────────────
+function hitTestPiece(piece, clientX, clientY) {
+  const rect = piece.svg.getBoundingClientRect()
+  const sz = piece.data.realRx * 2 + 40
+  // 椭圆中心在 svg 内的位置
+  const cx = rect.left + sz / 2
+  const cy = rect.top  + sz / 2
+  const dx = clientX - cx
+  const dy = clientY - cy
+  // 反向旋转鼠标坐标
+  const rad = -piece.currentAngle * Math.PI / 180
+  const rx2 = dx * Math.cos(rad) - dy * Math.sin(rad)
+  const ry2 = dx * Math.sin(rad) + dy * Math.cos(rad)
+  const rx = piece.data.realRx, ry = piece.currentRy
+  return (rx2 * rx2) / (rx * rx) + (ry2 * ry2) / (ry * ry) <= 1
+}
+
 // ── 已放置椭圆交互 ────────────────────────────────────────
 function makePlacedDraggable(svg, piece) {
   let pressStart = null, rotTimer = null, rotInterval = null
@@ -334,30 +351,27 @@ function makePlacedDraggable(svg, piece) {
     if (rotInterval) { clearInterval(rotInterval); rotInterval = null }
   }
 
-  svg.addEventListener('pointerdown', e => {
-    if (piece.hardLocked) return  // 锁定后屏蔽所有交互
-    e.preventDefault(); e.stopPropagation()
+  // pointerdown 由 container 统一分发（见下方 initPieceHitDispatch）
+  piece._startPress = (e) => {
     pressStart = Date.now(); isDragging = false
     startX = e.clientX; startY = e.clientY
-
     rotTimer = setTimeout(() => {
       rotTimer = null
       let elapsed = 0
       rotInterval = setInterval(() => {
         elapsed += 16
-        // 0~300ms 极慢(0.05)，300ms后逐渐加速到5 deg/frame
         const t = Math.max(0, elapsed - 300) / 2000
         const speed = 0.05 + Math.min(t, 1) * 4.95
         piece.currentAngle = (piece.currentAngle + speed) % 360
         updateTransform(piece)
       }, 16)
     }, 400)
-  })
+  }
 
   svg.addEventListener('pointermove', e => {
     if (!pressStart && !rotInterval) return
     if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5 && !isDragging) {
-      if (piece.snapped) { stopRot(); pressStart = null; return }  // 吸附后禁止拖动
+      if (piece.snapped) { stopRot(); pressStart = null; return }
       isDragging = true; stopRot(); pressStart = null
       e.preventDefault(); e.stopPropagation()
       const canvasEl = document.querySelector('#canvas-container canvas')
@@ -380,6 +394,26 @@ function makePlacedDraggable(svg, piece) {
   })
 
   svg.addEventListener('pointercancel', () => { stopRot(); pressStart = null; isDragging = false })
+}
+
+// container 统一 pointerdown 分发：倒序检测，找最上层命中的椭圆
+function initPieceHitDispatch() {
+  const container = document.getElementById('canvas-container')
+  container.addEventListener('pointerdown', e => {
+    if (!currentState || dragging) return
+    // 只处理直接点在 canvas 或 container 上的事件（不拦截已有 SVG 的冒泡）
+    const pieces = currentState.placedPieces
+    for (let i = pieces.length - 1; i >= 0; i--) {
+      const p = pieces[i]
+      if (p.hardLocked || p.svg.style.display === 'none') continue
+      if (hitTestPiece(p, e.clientX, e.clientY)) {
+        e.preventDefault(); e.stopPropagation()
+        p.svg.setPointerCapture?.(e.pointerId)
+        p._startPress(e)
+        return
+      }
+    }
+  }, true)  // capture 阶段，优先于 SVG 自身事件
 }
 
 // ── 点击逻辑 ──────────────────────────────────────────────
@@ -673,3 +707,5 @@ document.addEventListener('keydown', e => {
 })
 
 function checkComplete() {}
+
+initPieceHitDispatch()
