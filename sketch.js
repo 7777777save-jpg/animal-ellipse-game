@@ -12,6 +12,7 @@ let currentAnimal = 'lu'
 let circles  = []
 let gridData = {'1':[],'2':[],'3':[],'4':[]}
 let startTime = 0
+let _pauseUntil = 0
 
 function preload() {
   allNodes = loadJSON('circle_nodes.json')
@@ -45,6 +46,7 @@ function switchAnimal(name) {
   circles   = buildCircles(name)
   gridData  = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
   startTime = millis()
+  _pauseUntil = 0
 
   if (typeof onAnimalSwitch !== 'undefined') onAnimalSwitch(prev, name)
   else if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
@@ -59,11 +61,8 @@ function switchAnimal(name) {
 
 // 动画总时长：最后一个圆扩散完毕
 function cycleDuration() {
-  if (!circles.length) return 0
-  return circles[circles.length - 1].rippleEnd
+  return circles.reduce((m, c) => Math.max(m, c.rippleEnd), 0)
 }
-
-let _pauseUntil = 0  // 暂停结束的 millis() 时间点
 
 function draw() {
   background(...BG)
