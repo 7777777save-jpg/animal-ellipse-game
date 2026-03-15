@@ -638,14 +638,11 @@ function toggleLockSelected() {
   if (!selectedPiece) return
   const piece = selectedPiece
   piece.hardLocked = !piece.hardLocked
-  // 锁定后 pointer-events:none，点击穿透到下层
-  piece.svg.style.pointerEvents = piece.hardLocked ? 'none' : ''
-  piece.svg.style.cursor = piece.hardLocked ? 'default' : 'grab'
+  piece.svg.style.cursor = piece.hardLocked ? 'pointer' : 'grab'
   piece.el.style.strokeDasharray = piece.hardLocked ? '4 2' : ''
   piece.el.setAttribute('stroke', 'black')
   piece.el.setAttribute('stroke-width', piece.hardLocked ? '1.5' : '1')
-  if (piece.hardLocked) deselectPiece(piece)
-  else updateLockBtn(piece)
+  updateLockBtn(piece)
 }
 
 function backToLibrary() {
