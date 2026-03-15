@@ -714,41 +714,73 @@ function autoPlace() {
   const sorted = getSortedNodes(animal)
   const eList  = getSortedEllipses(animal)
 
-  // 收集库里还未使用的索引，按 order 从小到大放置
+  // 第一阶段：把库里剩余椭圆归位到圆心
   const pending = []
   sorted.forEach((n, i) => {
     if (currentState.usedIdx.has(i)) return
     const ed = eList[i] || {}
     pending.push({ i, n, ed })
   })
-  // 按 order 排序（order 小的先放，在底层）
   pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
 
-  let delay = 0
-  pending.forEach(({ i, n, ed }) => {
-    setTimeout(() => {
-      const fill    = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
-      const realRx  = n.r * CANVAS
-      const edRx    = (ed.rx || n.r) * CANVAS
-      const edRy    = (ed.ry || n.r) * CANVAS
-      const realRy  = Math.min(edRx, edRy)
-      const angle   = ed.angle || 0
-      const order   = ed.order || 500
-      const nx = n.x * CANVAS, ny = n.y * CANVAS
+  if (pending.length > 0) {
+    // 第一阶段：归位
+    let delay = 0
+    pending.forEach(({ i, n, ed }) => {
+      setTimeout(() => {
+        const fill   = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
+        const realRx = n.r * CANVAS
+        const edRx   = (ed.rx || n.r) * CANVAS
+        const edRy   = (ed.ry || n.r) * CANVAS
+        const realRy = Math.min(edRx, edRy)
+        const angle  = ed.angle || 0
+        const order  = ed.order || 500
+        const nx = n.x * CANVAS, ny = n.y * CANVAS
+        const data = { realRx, realRy, initAngle: angle, fill, targetIdx: i, order }
+        currentState.usedIdx.add(i)
+        const piece = placePiece({ x: nx, y: ny }, data, realRy, angle)
+        doSnap(piece, { x: nx, y: ny, r: n.r * CANVAS, idx: i })
+        const lib = document.getElementById('ellipse-library')
+        lib.querySelectorAll('[data-idx]').forEach(w => {
+          if (parseInt(w.dataset.idx) === i) w.remove()
+        })
+      }, delay)
+      delay += 80
+    })
+    currentState._autoStage = 1
+  } else if (currentState._autoStage === 1) {
+    // 第二阶段：动画旋转+拉伸到参考角度和 ry
+    currentState._autoStage = 2
+    const pieces = currentState.placedPieces
+    pieces.forEach((piece, pi) => {
+      if (piece.nodeIdx < 0) return  // 跳过 feature 椭圆
+      const i = piece.nodeIdx >= 0 ? piece.nodeIdx : piece.data.targetIdx
+      const ed = eList[i] || {}
+      const targetAngle = ed.angle || 0
+      const edRx = (ed.rx || 0) * CANVAS
+      const edRy = (ed.ry || 0) * CANVAS
+      const targetRy = Math.min(edRx, edRy)
+      if (piece.hardLocked) return
 
-      const data = { realRx, realRy, initAngle: angle, fill, targetIdx: i, order }
-      currentState.usedIdx.add(i)
-      const piece = placePiece({ x: nx, y: ny }, data, realRy, angle)
-      doSnap(piece, { x: nx, y: ny, r: n.r * CANVAS, idx: i })
+      const startAngle = piece.currentAngle
+      const startRy    = piece.currentRy
+      const dur = 600
+      const t0  = performance.now()
 
-      // 移除库里对应的 wrapper
-      const lib = document.getElementById('ellipse-library')
-      lib.querySelectorAll('[data-idx]').forEach(w => {
-        if (parseInt(w.dataset.idx) === i) w.remove()
-      })
-    }, delay)
-    delay += 80
-  })
+      // 角度差取最短路径
+      let dAngle = ((targetAngle - startAngle) % 360 + 540) % 360 - 180
+
+      const animate = (now) => {
+        const t = Math.min((now - t0) / dur, 1)
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t
+        piece.currentAngle = startAngle + dAngle * ease
+        piece.currentRy    = startRy + (targetRy - startRy) * ease
+        updateTransform(piece)
+        if (t < 1) requestAnimationFrame(animate)
+      }
+      setTimeout(() => requestAnimationFrame(animate), pi * 40)
+    })
+  }
 }
 
 function checkComplete() {}
