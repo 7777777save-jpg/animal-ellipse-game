@@ -415,9 +415,10 @@ function initPieceHitDispatch() {
     const pieces = currentState.placedPieces
     for (let i = pieces.length - 1; i >= 0; i--) {
       const p = pieces[i]
-      if (p.hardLocked || p.svg.style.display === 'none') continue
+      if (p.svg.style.display === 'none') continue
       if (hitTestPiece(p, e.clientX, e.clientY)) {
         e.preventDefault(); e.stopPropagation()
+        if (p.hardLocked) { handleClick(p); return }  // 锁定状态只允许点击选中/解锁
         p.svg.setPointerCapture?.(e.pointerId)
         p._startPress(e)
         return
