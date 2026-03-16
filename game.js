@@ -94,13 +94,20 @@ function loadAnimalState(animal) {
   hintCount = 0
   clearTimeout(hintTimer)
   hideRef()
+
   if (!animalState[animal]) {
     animalState[animal] = { placedPieces: [], usedIdx: new Set() }
   }
+
   currentState = animalState[animal]
+
+  // ★ 关键：初始化 AUTO 状态
+  currentState._autoStage = 0
+
   showAnimalPieces(animal)
   buildLibrary(animal)
   initFeaturePieces(animal)
+
   document.getElementById('ref-img').src = `reference/${animal}/hint.svg`
 }
 
