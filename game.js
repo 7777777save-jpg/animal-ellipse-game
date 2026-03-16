@@ -96,7 +96,7 @@ function loadAnimalState(animal) {
   hideRef()
 
   if (!animalState[animal]) {
-    animalState[animal] = { placedPieces: [], usedIdx: new Set() }
+    animalState[animal] = { placedPieces: [], usedIdx: new Set(), featureInited:false }
   }
 
   currentState = animalState[animal]
