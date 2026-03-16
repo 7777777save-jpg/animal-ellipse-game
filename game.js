@@ -781,8 +781,8 @@ function autoPlace() {
     currentState._autoStage = 2
     const pieces = currentState.placedPieces
     pieces.forEach((piece, pi) => {
-      if (piece.nodeIdx === undefined) return  // 跳过 feature 椭圆
-      const i = piece.nodeIdx >= 0 ? piece.nodeIdx : piece.data.targetIdx
+      if (piece.nodeIdx < 0) return // 跳过 feature 椭圆
+      const i = piece.nodeIdx
       const ed = eList[i] || {}
       const targetAngle = ed.angle || 0
       const edRx = (ed.rx || 0) * CANVAS
