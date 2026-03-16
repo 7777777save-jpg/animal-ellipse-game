@@ -745,7 +745,7 @@ function autoPlace() {
     let delay = 0
     pending.forEach(({ i, n, ed }) => {
       setTimeout(() => {
-        cconst fill = '#a4e1ff'
+        const fill = '#a4e1ff'
         const realRx = n.r * CANVAS
         const edRx   = (ed.rx || n.r) * CANVAS
         const edRy   = (ed.ry || n.r) * CANVAS
