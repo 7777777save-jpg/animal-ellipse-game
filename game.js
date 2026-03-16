@@ -119,7 +119,7 @@ function initFeaturePieces(animal) {
   if (currentState.featureInited) return
   currentState.featureInited = true
 
-  ffetch(`reference/${animal}/feature.svg`)
+  fetch(`reference/${animal}/feature.svg`)
     .then(r => r.text())
     .then(svgText => {
       const S = CANVAS / 1000
@@ -522,7 +522,7 @@ function createFloat(rx, ry, angle, fill) {
   const floatEl = document.createElementNS('http://www.w3.org/2000/svg','ellipse')
   floatEl.setAttribute('cx', sz/2); floatEl.setAttribute('cy', sz/2)
   floatEl.setAttribute('rx', rx); floatEl.setAttribute('ry', ry)
-  floatEl.setAttribute('transform', rotate(${angle||0},${sz/2},${sz/2}))
+  floatEl.setAttribute('transform', `rotate(${angle||0},${sz/2},${sz/2})`)
   floatEl.setAttribute('fill', fill)
   floatEl.setAttribute('stroke', 'black'); floatEl.setAttribute('stroke-width', '1.5')
   floatSvg.appendChild(floatEl); document.body.appendChild(floatSvg)
@@ -630,7 +630,7 @@ function placePiece(pos, data, initRy, initAngle) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg')
   svg.setAttribute('width', sz); svg.setAttribute('height', sz)
   svg.classList.add('placed-ellipse')
- svg.style.cssText = position:absolute;overflow:visible;z-index:150;cursor:grab;touch-action:none;
+  svg.style.cssText = `position:absolute;overflow:visible;z-index:150;cursor:grab;touch-action:none;`
   svg.style.left = (pos.x - sz/2) + 'px'
   svg.style.top  = (pos.y - sz/2) + 'px'
 
@@ -784,8 +784,8 @@ function autoPlace() {
       const i = piece.nodeIdx >= 0 ? piece.nodeIdx : piece.data.targetIdx
       const ed = eList[i] || {}
       const targetAngle = ed.angle || 0
-      const edRx = (ed.rx || 0) * CANVAS
-      const edRy = (ed.ry || 0) * CANVAS
+      const edRx = (ed.rx || sorted[i].r) * CANVAS
+      const edRy = (ed.ry || sorted[i].r) * CANVAS
       const targetRy = Math.min(edRx, edRy)
       if (piece.hardLocked) return
 
