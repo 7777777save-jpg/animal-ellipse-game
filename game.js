@@ -1,3 +1,4 @@
+还是没反应
 // game.js
 const ANIMAL_NAMES = { lu:'鹿', gezi:'鸽子', tuzi:'兔子', he:'鹤', e:'鹅', canglu:'苍鹭' }
 const RY_STEP = 6
@@ -94,13 +95,20 @@ function loadAnimalState(animal) {
   hintCount = 0
   clearTimeout(hintTimer)
   hideRef()
+
   if (!animalState[animal]) {
     animalState[animal] = { placedPieces: [], usedIdx: new Set() }
   }
+
   currentState = animalState[animal]
+
+  // ★ 关键：初始化 AUTO 状态
+  currentState._autoStage = 0
+
   showAnimalPieces(animal)
   buildLibrary(animal)
   initFeaturePieces(animal)
+
   document.getElementById('ref-img').src = `reference/${animal}/hint.svg`
 }
 
@@ -727,6 +735,9 @@ document.addEventListener('keydown', e => {
 
 function autoPlace() {
   if (!currentState) return
+  
+  if (currentState._autoStage === undefined) currentState._autoStage = 0
+  
   const animal = currentAnimal
   const sorted = getSortedNodes(animal)
   const eList  = matchEllipsesToNodes(animal)
@@ -734,13 +745,13 @@ function autoPlace() {
   // 第一阶段：把库里剩余椭圆归位到圆心
   const pending = []
   sorted.forEach((n, i) => {
-    if (currentState.usedIdx.has(i)) return
+    if (currentState.usedIdx.has(i) && currentState._autoStage === 0) return
     const ed = eList[i] || {}
     pending.push({ i, n, ed })
   })
   pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
 
-  if (pending.length > 0) {
+  if (currentState._autoStage === 0) {
     // 第一阶段：归位
     let delay = 0
     pending.forEach(({ i, n, ed }) => {
@@ -765,7 +776,7 @@ function autoPlace() {
       delay += 80
     })
     currentState._autoStage = 1
-  } else if (currentState._autoStage === 1) {
+  } else {
     // 第二阶段：动画旋转+拉伸到参考角度和 ry
     currentState._autoStage = 2
     const pieces = currentState.placedPieces
