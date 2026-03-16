@@ -7,7 +7,7 @@ const SCALE   = 0.2
 const LAYER1 = { e: 'reference/e/layer1_combined.jpg.svg' }
 function refPath(animal, layer) {
   if (layer === 'layer1' && LAYER1[animal]) return LAYER1[animal]
-  return `reference/${animal}/${layer === 'layer1' ? 'layer1_combined' : 'layer2_circle_system'}.svg`
+  return reference/${animal}/${layer === 'layer1' ? 'layer1_combined' : 'layer2_circle_system'}.svg
 }
 
 let gameMode      = false
@@ -94,14 +94,21 @@ function loadAnimalState(animal) {
   hintCount = 0
   clearTimeout(hintTimer)
   hideRef()
+
   if (!animalState[animal]) {
     animalState[animal] = { placedPieces: [], usedIdx: new Set() }
   }
+
   currentState = animalState[animal]
+
+  // ★ 关键：初始化 AUTO 状态
+  currentState._autoStage = 0
+
   showAnimalPieces(animal)
   buildLibrary(animal)
   initFeaturePieces(animal)
-  document.getElementById('ref-img').src = `reference/${animal}/hint.svg`
+
+  document.getElementById('ref-img').src = reference/${animal}/hint.svg
 }
 
 // 每个动物中"白色圆环"的 class 名（用于过滤 feature 椭圆）
@@ -112,7 +119,7 @@ function initFeaturePieces(animal) {
   if (currentState.featureInited) return
   currentState.featureInited = true
 
-  fetch(`reference/${animal}/feature.svg`)
+  fetch(reference/${animal}/feature.svg)
     .then(r => r.text())
     .then(svgText => {
       const S = CANVAS / 1000
@@ -260,7 +267,7 @@ function buildLibrary(animal) {
     if (st.usedIdx.has(i)) return  // 已使用的不显示
 
     const ed   = eList[i] || {}
-    const fill = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
+    const fill = '#a4e1ff'
     // 长轴 = 圆直径（硬性约束）
     const realRx = n.r * CANVAS  // 长半轴 = 圆半径
     // 短轴初始 = ellipse_data 中较小的半轴（已归一化，乘CANVAS）
@@ -274,7 +281,7 @@ function buildLibrary(animal) {
     const bw  = Math.ceil(realRx * 2 * SCALE + 4)
 
     const wrapper = document.createElement('div')
-    wrapper.style.cssText = `position:relative;width:${bw}px;height:${bw}px;cursor:grab;flex-shrink:0;`
+    wrapper.style.cssText = position:relative;width:${bw}px;height:${bw}px;cursor:grab;flex-shrink:0;
     wrapper.dataset.idx = i
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg','svg')
@@ -284,7 +291,7 @@ function buildLibrary(animal) {
     const el = document.createElementNS('http://www.w3.org/2000/svg','ellipse')
     el.setAttribute('cx', bw/2); el.setAttribute('cy', bw/2)
     el.setAttribute('rx', dRx); el.setAttribute('ry', dRy)
-    el.setAttribute('transform', `rotate(${initAngle},${bw/2},${bw/2})`)
+    el.setAttribute('transform', rotate(${initAngle},${bw/2},${bw/2}))
     el.setAttribute('fill', fill)
     el.setAttribute('stroke', 'black'); el.setAttribute('stroke-width', '1')
     svg.appendChild(el); wrapper.appendChild(svg); lib.appendChild(wrapper)
@@ -511,11 +518,11 @@ function createFloat(rx, ry, angle, fill) {
   const sz = rx * 2 + 20
   const floatSvg = document.createElementNS('http://www.w3.org/2000/svg','svg')
   floatSvg.setAttribute('width', sz); floatSvg.setAttribute('height', sz)
-  floatSvg.style.cssText = `position:fixed;pointer-events:none;z-index:500;overflow:visible;`
+  floatSvg.style.cssText = position:fixed;pointer-events:none;z-index:500;overflow:visible;
   const floatEl = document.createElementNS('http://www.w3.org/2000/svg','ellipse')
   floatEl.setAttribute('cx', sz/2); floatEl.setAttribute('cy', sz/2)
   floatEl.setAttribute('rx', rx); floatEl.setAttribute('ry', ry)
-  floatEl.setAttribute('transform', `rotate(${angle||0},${sz/2},${sz/2})`)
+  floatEl.setAttribute('transform', rotate(${angle||0},${sz/2},${sz/2}))
   floatEl.setAttribute('fill', fill)
   floatEl.setAttribute('stroke', 'black'); floatEl.setAttribute('stroke-width', '1.5')
   floatSvg.appendChild(floatEl); document.body.appendChild(floatSvg)
@@ -623,8 +630,7 @@ function placePiece(pos, data, initRy, initAngle) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg')
   svg.setAttribute('width', sz); svg.setAttribute('height', sz)
   svg.classList.add('placed-ellipse')
-  svg.style.cssText = `position:absolute;overflow:visible;cursor:grab;touch-action:none;`
-  svg.style.zIndex = 100 + (data.order || 500)
+  svg.style.cssText = position:absolute;overflow:visible;z-index:150;cursor:grab;touch-action:none;
   svg.style.left = (pos.x - sz/2) + 'px'
   svg.style.top  = (pos.y - sz/2) + 'px'
 
@@ -653,7 +659,7 @@ function placePiece(pos, data, initRy, initAngle) {
 function updateTransform(piece) {
   const sz = piece.data.realRx * 2 + 40
   piece.el.setAttribute('ry', piece.currentRy)
-  piece.el.setAttribute('transform', `rotate(${piece.currentAngle},${sz/2},${sz/2})`)
+  piece.el.setAttribute('transform', rotate(${piece.currentAngle},${sz/2},${sz/2}))
 }
 
 function clampRy(ry, maxRx) {
@@ -728,6 +734,9 @@ document.addEventListener('keydown', e => {
 
 function autoPlace() {
   if (!currentState) return
+  
+  if (currentState._autoStage === undefined) currentState._autoStage = 0
+  
   const animal = currentAnimal
   const sorted = getSortedNodes(animal)
   const eList  = matchEllipsesToNodes(animal)
@@ -735,18 +744,18 @@ function autoPlace() {
   // 第一阶段：把库里剩余椭圆归位到圆心
   const pending = []
   sorted.forEach((n, i) => {
-    if (currentState.usedIdx.has(i)) return
+    if (currentState.usedIdx.has(i) && currentState._autoStage === 0) return
     const ed = eList[i] || {}
     pending.push({ i, n, ed })
   })
   pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
 
-  if (pending.length > 0) {
+  if (currentState._autoStage === 0) {
     // 第一阶段：归位
     let delay = 0
     pending.forEach(({ i, n, ed }) => {
       setTimeout(() => {
-        const fill   = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
+        const fill = '#a4e1ff'
         const realRx = n.r * CANVAS
         const edRx   = (ed.rx || n.r) * CANVAS
         const edRy   = (ed.ry || n.r) * CANVAS
@@ -766,7 +775,7 @@ function autoPlace() {
       delay += 80
     })
     currentState._autoStage = 1
-  } else if (currentState._autoStage === 1) {
+  } else {
     // 第二阶段：动画旋转+拉伸到参考角度和 ry
     currentState._autoStage = 2
     const pieces = currentState.placedPieces
@@ -800,7 +809,7 @@ function autoPlace() {
     })
   }
 }
-document.getElementById('play-btn').addEventListener('click', togglePlay)
+
 function checkComplete() {}
 
 initPieceHitDispatch()
