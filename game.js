@@ -260,7 +260,7 @@ function buildLibrary(animal) {
     if (st.usedIdx.has(i)) return  // 已使用的不显示
 
     const ed   = eList[i] || {}
-    const fill = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
+    const fill = '#a4e1ff'
     // 长轴 = 圆直径（硬性约束）
     const realRx = n.r * CANVAS  // 长半轴 = 圆半径
     // 短轴初始 = ellipse_data 中较小的半轴（已归一化，乘CANVAS）
