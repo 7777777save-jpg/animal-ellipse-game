@@ -623,7 +623,8 @@ function placePiece(pos, data, initRy, initAngle) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg')
   svg.setAttribute('width', sz); svg.setAttribute('height', sz)
   svg.classList.add('placed-ellipse')
-  svg.style.cssText = `position:absolute;overflow:visible;z-index:150;cursor:grab;touch-action:none;`
+  svg.style.cssText = `position:absolute;overflow:visible;cursor:grab;touch-action:none;`
+  svg.style.zIndex = 100 + (data.order || 500)
   svg.style.left = (pos.x - sz/2) + 'px'
   svg.style.top  = (pos.y - sz/2) + 'px'
 
