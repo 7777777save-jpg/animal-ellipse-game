@@ -744,7 +744,7 @@ function autoPlace() {
   // 第一阶段：把库里剩余椭圆归位到圆心
   const pending = []
   sorted.forEach((n, i) => {
-    if (currentState.usedIdx.has(i)) return
+    if (currentState.usedIdx.has(i) && currentState._autoStage === 0) return
     const ed = eList[i] || {}
     pending.push({ i, n, ed })
   })
