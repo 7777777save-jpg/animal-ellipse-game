@@ -799,7 +799,7 @@ function autoPlace() {
     })
   }
 }
-
+document.getElementById('play-btn').addEventListener('click', togglePlay)
 function checkComplete() {}
 
 initPieceHitDispatch()
