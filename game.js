@@ -777,10 +777,11 @@ function autoPlace() {
     currentState._autoStage = 1
   } else {
     // 第二阶段：动画旋转+拉伸到参考角度和 ry
+    console.log("AUTO stage:", currentState._autoStage)
     currentState._autoStage = 2
     const pieces = currentState.placedPieces
     pieces.forEach((piece, pi) => {
-      if (piece.nodeIdx < 0) return  // 跳过 feature 椭圆
+      if (piece.nodeIdx === undefined) return  // 跳过 feature 椭圆
       const i = piece.nodeIdx >= 0 ? piece.nodeIdx : piece.data.targetIdx
       const ed = eList[i] || {}
       const targetAngle = ed.angle || 0
