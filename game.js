@@ -168,12 +168,7 @@ function initFeaturePieces(animal) {
 
       doc.querySelectorAll('ellipse').forEach(e => {
         const cls = e.getAttribute('class') || ''
-
-        // 鹿的脚不要作为 feature
-        if (animal === 'lu' && cls === 'cls-3') return
-
         if (cls === 'cls-4' || cls === circleCls) return
-        
         const cx = parseFloat(e.getAttribute('cx')) * S
         const cy = parseFloat(e.getAttribute('cy')) * S
         const rx = parseFloat(e.getAttribute('rx')) * S
