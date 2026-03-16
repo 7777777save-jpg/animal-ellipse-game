@@ -260,7 +260,7 @@ function buildLibrary(animal) {
     if (st.usedIdx.has(i)) return  // 已使用的不显示
 
     const ed   = eList[i] || {}
-    const fill = '#a4e1ff'
+    const fill = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
     // 长轴 = 圆直径（硬性约束）
     const realRx = n.r * CANVAS  // 长半轴 = 圆半径
     // 短轴初始 = ellipse_data 中较小的半轴（已归一化，乘CANVAS）
@@ -727,9 +727,6 @@ document.addEventListener('keydown', e => {
 
 function autoPlace() {
   if (!currentState) return
-  
-  if (currentState._autoStage === undefined) currentState._autoStage = 0
-  
   const animal = currentAnimal
   const sorted = getSortedNodes(animal)
   const eList  = matchEllipsesToNodes(animal)
@@ -743,12 +740,12 @@ function autoPlace() {
   })
   pending.sort((a, b) => (a.ed.order || 500) - (b.ed.order || 500))
 
-  if (currentState._autoStage === 0) {
+  if (pending.length > 0) {
     // 第一阶段：归位
     let delay = 0
     pending.forEach(({ i, n, ed }) => {
       setTimeout(() => {
-        const fill = '#a4e1ff'
+        const fill   = (ed.fill && ed.fill !== 'none') ? ed.fill : '#a4e1ff'
         const realRx = n.r * CANVAS
         const edRx   = (ed.rx || n.r) * CANVAS
         const edRy   = (ed.ry || n.r) * CANVAS
