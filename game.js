@@ -22,7 +22,18 @@ let hintTimer     = null
 const animalState = {}
 let currentState  = null  // 指向当前动物的状态
 
-fetch('ellipse_data.json').then(r => r.json()).then(d => { ellipseData = d })
+fetch('ellipse_data.json')
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status} while loading ellipse_data.json`)
+    return r.json()
+  })
+  .then(d => { ellipseData = d })
+  .catch(err => {
+    ellipseData = {}
+    if (typeof showLoadError === 'function') {
+      showLoadError('读取 ellipse_data.json 失败。', err?.message || String(err))
+    }
+  })
 
 function getSortedNodes(animal) {
   const nodes = (typeof allNodes !== 'undefined' && allNodes[animal]) || []
@@ -120,7 +131,10 @@ function initFeaturePieces(animal) {
   currentState.featureInited = true
 
   fetch(`reference/${animal}/feature.svg`)
-    .then(r => r.text())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status} while loading reference/${animal}/feature.svg`)
+      return r.text()
+    })
     .then(svgText => {
       const S = CANVAS / 1000
       const circleCls = CIRCLE_CLS[animal]
@@ -230,6 +244,11 @@ function initFeaturePieces(animal) {
       })
 
       buildLibrary(animal)
+    })
+    .catch(err => {
+      if (typeof showLoadError === 'function') {
+        showLoadError(`读取 reference/${animal}/feature.svg 失败。`, err?.message || String(err))
+      }
     })
 }
 

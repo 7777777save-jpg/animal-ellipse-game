@@ -16,15 +16,51 @@ let _pauseUntil = 0
 const ANIMALS = ['lu','canglu','e','gezi','tuzi','he']
 let _idleCycle = 0
 
+// 播放序列：两两叠加 → 各自单独
+const SEQUENCE = [
+  { type: 'duo',  animals: ['lu', 'gezi']     },
+  { type: 'solo', animal:  'lu'               },
+  { type: 'solo', animal:  'gezi'             },
+  { type: 'duo',  animals: ['tuzi', 'he']     },
+  { type: 'solo', animal:  'tuzi'             },
+  { type: 'solo', animal:  'he'               },
+  { type: 'duo',  animals: ['e', 'canglu']    },
+  { type: 'solo', animal:  'e'                },
+  { type: 'solo', animal:  'canglu'           },
+]
+let seqIndex = 0
+
 function preload() {
-  allNodes = loadJSON('circle_nodes.json')
-  allGrids = loadJSON('grid_nodes.json')
+  loadJSON(
+    'circle_nodes.json',
+    data => { allNodes = data || {} },
+    err => {
+      allNodes = {}
+      if (typeof showLoadError === 'function') {
+        showLoadError('读取 circle_nodes.json 失败。', err?.message || String(err))
+      }
+    }
+  )
+  loadJSON(
+    'grid_nodes.json',
+    data => { allGrids = data || {} },
+    err => {
+      allGrids = {}
+      if (typeof showLoadError === 'function') {
+        showLoadError('读取 grid_nodes.json 失败。', err?.message || String(err))
+      }
+    }
+  )
 }
 
 function setup() {
   createCanvas(CANVAS, CANVAS).parent('canvas-container')
   frameRate(60)
-  switchAnimal(currentAnimal)
+  if (typeof window !== 'undefined' && window.__startupErrors && window.__startupErrors.length) {
+    noLoop()
+    return
+  }
+  applyStep(seqIndex)
 }
 
 function buildCircles(name) {
@@ -42,24 +78,50 @@ function buildCircles(name) {
   })
 }
 
-function switchAnimal(name) {
-  const prev = currentAnimal
-  currentAnimal = name
-  circles   = buildCircles(name)
-  gridData  = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
-  startTime = millis()
+function applyStep(idx) {
+  const step = SEQUENCE[idx % SEQUENCE.length]
+  if (step.type === 'duo') {
+    const [a1, a2] = step.animals
+    circles      = [...buildCircles(a1), ...buildCircles(a2)]
+    currentAnimal = a1
+    gridData     = {'1':[],'2':[],'3':[],'4':[]}   // 叠加时不显示网格
+    // 叠加时不高亮任何动物按钮
+    document.querySelectorAll('button').forEach(b => b.classList.remove('active'))
+  } else {
+    currentAnimal = step.animal
+    circles  = buildCircles(step.animal)
+    gridData = allGrids[step.animal] || {'1':[],'2':[],'3':[],'4':[]}
+    _updateButtons()
+  }
+  startTime   = millis()
   _pauseUntil = 0
-  _idleCycle = 0
+}
+
+function _updateButtons() {
+  const nameMap = { lu:'鹿', canglu:'苍鹭', e:'鹅', gezi:'鸽子', tuzi:'兔子', he:'鹤' }
+  document.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.textContent === nameMap[currentAnimal])
+  })
+}
+
+function switchAnimal(name) {
+  const prev    = currentAnimal
+  currentAnimal = name
+  circles  = buildCircles(name)
+  gridData = allGrids[name] || {'1':[],'2':[],'3':[],'4':[]}
+  startTime   = millis()
+  _pauseUntil = 0
+  _idleCycle  = 0
+
+  // 找到该动物 solo 步骤，下次自动从那之后继续序列
+  const soloIdx = SEQUENCE.findIndex(s => s.type === 'solo' && s.animal === name)
+  seqIndex = soloIdx >= 0 ? soloIdx : 0
 
   if (typeof onAnimalSwitch !== 'undefined') onAnimalSwitch(prev, name)
   else if (typeof clearLibrary !== 'undefined' && gameMode) buildLibrary()
   else if (typeof clearLibrary !== 'undefined') clearLibrary()
 
-  document.querySelectorAll('button').forEach(b => {
-    b.classList.toggle('active', b.textContent === {
-      lu:'鹿', canglu:'苍鹭', e:'鹅', gezi:'鸽子', tuzi:'兔子', he:'鹤'
-    }[name])
-  })
+  _updateButtons()
 }
 
 // 动画总时长：最后一个圆扩散完毕
@@ -72,21 +134,15 @@ function draw() {
 
   const now = millis()
 
-  // 循环控制（idle 状态）
+  // 序列推进（idle 状态）
   if (!(typeof gameMode !== 'undefined' && gameMode)) {
     const elapsed = (now - startTime) / 1000
-    const dur = cycleDuration()
-    if (dur > 0 && elapsed >= dur ) {
-      // 进入暂停
+    const dur     = cycleDuration()
+    if (dur > 0 && elapsed >= dur) {
       if (_pauseUntil === 0) _pauseUntil = now + 500
-      // 暂停结束 → 切换到下一个动物
       if (now >= _pauseUntil) {
-        const idx = (ANIMALS.indexOf(currentAnimal) + 1) % ANIMALS.length
-        currentAnimal = ANIMALS[idx]
-        circles  = buildCircles(currentAnimal)
-        gridData = allGrids[currentAnimal] || {'1':[],'2':[],'3':[],'4':[]}
-        startTime = now
-        _pauseUntil = 0
+        seqIndex = (seqIndex + 1) % SEQUENCE.length
+        applyStep(seqIndex)
       }
     }
   }
@@ -95,26 +151,7 @@ function draw() {
 
   drawGrid(elapsed)
   strokeWeight(0.8)
-
-  for (let c of circles) {
-    if (elapsed < c.appear) continue
-
-    const rippleT  = min((elapsed - c.appear) / (c.rippleEnd - c.appear), 1)
-    const rippleTe = 1 - pow(1 - rippleT, 2)
-    const r        = c.target * rippleTe
-
-    if (elapsed < c.fadeEnd) {
-      const ptAlpha = elapsed < c.fadeStart ? 220
-                    : map(elapsed, c.fadeStart, c.fadeEnd, 220, 0)
-      noStroke()
-      fill(WHITE[0], WHITE[1], WHITE[2], ptAlpha)
-      ellipse(c.x, c.y, 5, 5)
-    }
-
-    noFill()
-    stroke(WHITE[0], WHITE[1], WHITE[2], map(rippleTe, 0, 1, 40, 220))
-    ellipse(c.x, c.y, r * 2, r * 2)
-  }
+  drawCircleSet(circles, elapsed)
 
   if (typeof snapHighlight !== 'undefined' && snapHighlight) {
     noFill()
@@ -132,6 +169,28 @@ function draw() {
     stroke(255, 255, 255, a)
     nodes.forEach(n => ellipse(n.x * CANVAS, n.y * CANVAS, n.r * CANVAS * 2, n.r * CANVAS * 2))
     strokeWeight(0.8)
+  }
+}
+
+function drawCircleSet(circleArr, elapsed) {
+  for (let c of circleArr) {
+    if (elapsed < c.appear) continue
+
+    const rippleT  = min((elapsed - c.appear) / (c.rippleEnd - c.appear), 1)
+    const rippleTe = 1 - pow(1 - rippleT, 2)
+    const r        = c.target * rippleTe
+
+    if (elapsed < c.fadeEnd) {
+      const ptAlpha = elapsed < c.fadeStart ? 220
+                    : map(elapsed, c.fadeStart, c.fadeEnd, 220, 0)
+      noStroke()
+      fill(WHITE[0], WHITE[1], WHITE[2], ptAlpha)
+      ellipse(c.x, c.y, 5, 5)
+    }
+
+    noFill()
+    stroke(WHITE[0], WHITE[1], WHITE[2], map(rippleTe, 0, 1, 40, 220))
+    ellipse(c.x, c.y, r * 2, r * 2)
   }
 }
 

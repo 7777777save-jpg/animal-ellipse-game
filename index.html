@@ -16,7 +16,6 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 #zoom-out, #zoom-reset, #zoom-in { padding: 4px 10px; font-size: 13px; }
 #tips { font-size: 11px; color: #6a9abf; padding: 4px 8px; opacity: 0.8; }
 
-  
 /* 全屏视口，负责拖动 */
 #viewport { position: fixed; inset: 0; overflow: hidden; cursor: grab; }
 #viewport.dragging { cursor: grabbing; }
@@ -46,6 +45,33 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
 #complete-msg { position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); font-size:32px; color:#4aff8a; pointer-events:none; display:none; z-index:800; text-shadow:0 0 20px #4aff8a; }
 #complete-overlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:700; }
 #complete-overlay img { width:100%; height:100%; object-fit:contain; opacity:0; transition:opacity 0.6s; }
+#load-error {
+  position: fixed;
+  inset: 20px;
+  display: none;
+  padding: 18px 20px;
+  background: rgba(0, 10, 28, 0.94);
+  border: 1px solid #ff8a8a;
+  border-radius: 12px;
+  color: #ffd7d7;
+  z-index: 2000;
+  overflow: auto;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+#load-error h2 { font-size: 20px; margin-bottom: 10px; color: #ffd1d1; }
+#load-error p { line-height: 1.6; margin-bottom: 8px; }
+#load-error code, #load-error pre {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+#load-error code { padding: 2px 6px; }
+#load-error pre {
+  white-space: pre-wrap;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
 </style>
 </head>
 <body>
@@ -94,6 +120,55 @@ button:hover, button.active { background: #1a3a7a; border-color: #a4e1ff; }
   </div>
 </div>
 <div id="complete-msg"></div>
+<div id="load-error">
+  <h2>资源加载失败</h2>
+  <p id="load-error-text"></p>
+  <pre id="load-error-detail"></pre>
+</div>
+<script>
+window.__startupErrors = []
+
+function showLoadError(message, detail = '') {
+  const normalized = [message, detail].filter(Boolean).join('\n')
+  if (normalized && window.__startupErrors.includes(normalized)) return
+  if (normalized) window.__startupErrors.push(normalized)
+
+  const box = document.getElementById('load-error')
+  const text = document.getElementById('load-error-text')
+  const detailNode = document.getElementById('load-error-detail')
+  if (!box || !text || !detailNode) return
+
+  const protocolHint = location.protocol === 'file:'
+    ? '你现在是用 file:// 直接打开页面。这个项目会读取 JSON 和 SVG 文件，Chrome 通常会拦截这类请求。请改用 VS Code Live Server 或其他本地服务器访问。'
+    : '请检查对应文件是否存在、路径是否正确，或打开浏览器控制台查看更具体的错误。'
+
+  text.textContent = message || '页面启动时读取资源失败。'
+  detailNode.textContent = [detail, protocolHint].filter(Boolean).join('\n\n')
+  box.style.display = 'block'
+}
+
+window.addEventListener('error', event => {
+  const target = event.target
+  if (target && target !== window && (target.tagName === 'SCRIPT' || target.tagName === 'LINK' || target.tagName === 'IMG')) {
+    const src = target.src || target.href || '(unknown resource)'
+    showLoadError('页面依赖资源未能成功加载。', src)
+    return
+  }
+  if (event.message) showLoadError('页面脚本执行失败。', event.message)
+})
+
+window.addEventListener('unhandledrejection', event => {
+  const reason = event.reason
+  const detail = reason && reason.message ? reason.message : String(reason)
+  showLoadError('页面启动过程中出现未处理的异步错误。', detail)
+})
+
+window.addEventListener('load', () => {
+  if (typeof window.p5 === 'undefined') {
+    showLoadError('p5.js 没有成功加载。', '当前页面依赖在线脚本 https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js')
+  }
+})
+</script>
 <script src="sketch.js"></script>
 <script src="game.js"></script>
 <script>
